@@ -860,6 +860,33 @@ function hasHeaderCaseInsensitive(headers: Readonly<Record<string, string>>, tar
   return Object.keys(headers).some((key) => key.toLowerCase() === lower);
 }
 
+/** Reads an API key from a stored OpenCode credential, supporting `key` and `oauth` credentials. */
+export function resolveCredentialApiKey(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  const type = prop(value, "type");
+  if (type === "key") {
+    const key = prop(value, "key");
+    return typeof key === "string" && key.length > 0 ? key : undefined;
+  }
+  if (type === "oauth") {
+    const access = prop(value, "access");
+    return typeof access === "string" && access.length > 0 ? access : undefined;
+  }
+  return undefined;
+}
+
+/** Candidate Workers AI URLs for a provider baseURL, preferring the documented AI Gateway run path. */
+export function buildCloudflareCandidateUrls(
+  baseURL: string,
+  modelID: string,
+): ReadonlyArray<string> {
+  const base = baseURL.replace(/\/+$/, "").replace(/\/v1$/, "");
+  if (base.includes("gateway.ai.cloudflare.com")) {
+    return [`${base}/run/${modelID}`, `${base}/${modelID}`];
+  }
+  return [`${base}/run/${modelID}`];
+}
+
 export function buildRequestHeaders(
   providerHeaders: Readonly<Record<string, string>> | undefined,
   apiKey: string | undefined,

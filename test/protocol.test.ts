@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  buildCloudflareCandidateUrls,
   buildCloudflareRunBody,
   buildGoogleDecisionsBody,
   buildRequestHeaders,
@@ -9,6 +10,7 @@ import {
   parseEvaluateRequest,
   parseInputParts,
   parsePluginConfig,
+  resolveCredentialApiKey,
   resolveMediaType,
   selectDefaultModel,
   unwrapSystemOneEnvelope,
@@ -294,5 +296,30 @@ describe("protocol encoding and decoding", () => {
       "cf-access-token": "tok",
       authorization: "Bearer secret",
     });
+  });
+
+  it("resolves stored key and oauth credentials into API keys", () => {
+    expect(resolveCredentialApiKey({ type: "key", key: "cf-token" })).toBe("cf-token");
+    expect(
+      resolveCredentialApiKey({ type: "oauth", access: "access-token", refresh: "r", expires: 1 }),
+    ).toBe("access-token");
+    expect(resolveCredentialApiKey({ type: "key", key: "" })).toBeUndefined();
+    expect(resolveCredentialApiKey({ type: "external" })).toBeUndefined();
+    expect(resolveCredentialApiKey(undefined)).toBeUndefined();
+  });
+
+  it("prefers the AI Gateway run path and falls back to the model path", () => {
+    expect(
+      buildCloudflareCandidateUrls(
+        "https://gateway.ai.cloudflare.com/v1/account/gateway/workers-ai/v1",
+        "@cf/cloudflare/clef-flash",
+      ),
+    ).toEqual([
+      "https://gateway.ai.cloudflare.com/v1/account/gateway/workers-ai/run/@cf/cloudflare/clef-flash",
+      "https://gateway.ai.cloudflare.com/v1/account/gateway/workers-ai/@cf/cloudflare/clef-flash",
+    ]);
+    expect(
+      buildCloudflareCandidateUrls("https://api.cloudflare.com/client/v4/accounts/a/ai/v1/", "@cf/cloudflare/clef"),
+    ).toEqual(["https://api.cloudflare.com/client/v4/accounts/a/ai/run/@cf/cloudflare/clef"]);
   });
 });

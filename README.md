@@ -182,6 +182,7 @@ When `model` is omitted, the plugin resolves the default in this order:
 
 - Uses OpenCode's existing provider configuration and credentials—no separate API keys are required.
 - Supports Cloudflare AI Gateway proxies (including Workers AI `/workers-ai/run/<model>` and header-authenticated Google Decisions endpoints) as well as standard OpenCode decision providers through `ctx.experimental.generate.decisions`.
+- When a provider has no `settings.apiKey`, the plugin resolves the active credential for its integration, so accounts connected with `/connect` (for example Cloudflare Workers AI) also work through an AI Gateway proxy.
 - Local `files` passed to `evaluate` or `batch` are checked with OpenCode's `read` permission (`ctx.permission.assert`), restricted to media extensions (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.pdf`, `.mp3`, `.wav`, `.m4a`, `.ogg`, `.mp4`, `.webm`, `.mov`), and capped at 10 MiB per file.
 
 ## Development

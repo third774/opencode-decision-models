@@ -3,6 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import {
   answersArrayToRecord,
+  buildCloudflareCandidateUrls,
   buildCloudflareRunBody,
   buildGoogleDecisionsBody,
   buildRequestHeaders,
@@ -20,6 +21,7 @@ import {
   parseInputParts,
   parsePluginConfig,
   prop,
+  resolveCredentialApiKey,
   resolveMediaType,
   selectDefaultModel,
   unwrapSystemOneEnvelope,
@@ -187,10 +189,27 @@ export default Plugin.define({
         settings !== undefined && typeof prop(settings, "baseURL") === "string"
           ? String(prop(settings, "baseURL")).replace(/\/+$/, "")
           : undefined;
-      const apiKey =
+      let apiKey =
         settings !== undefined && typeof prop(settings, "apiKey") === "string"
           ? String(prop(settings, "apiKey"))
           : undefined;
+
+      // Providers connected through `/connect` keep their secret in OpenCode's credential
+      // store instead of provider settings, so resolve the active credential as a fallback.
+      if (apiKey === undefined || apiKey.length === 0) {
+        const integrationID = providerInfo?.integrationID;
+        if (integrationID !== undefined && integrationID.length > 0) {
+          const connection = await ctx.integration.connection
+            .active(integrationID)
+            .catch(() => undefined);
+          if (connection !== undefined) {
+            const credential = await ctx.integration.connection
+              .resolve(connection)
+              .catch(() => undefined);
+            apiKey = resolveCredentialApiKey(credential);
+          }
+        }
+      }
 
       // Cloudflare AI Gateway proxies (for example .../workers-ai/v1) do not end in /ai/v1,
       // which OpenCode's built-in cloudflare-workers-ai decision route requires.
@@ -198,10 +217,7 @@ export default Plugin.define({
         const bodyResult = buildCloudflareRunBody(parts, questions);
         if (!bodyResult.ok) throw new Error(bodyResult.error);
 
-        const base = baseURL.replace(/\/v1$/, "");
-        const candidateUrls = base.includes("gateway.ai.cloudflare.com")
-          ? [`${base}/${model.id}`, `${base}/run/${model.id}`]
-          : [`${base}/run/${model.id}`];
+        const candidateUrls = buildCloudflareCandidateUrls(baseURL, model.id);
         const headers = buildRequestHeaders(providerInfo?.headers, apiKey);
 
         let lastError = "Cloudflare Workers AI decision request failed.";
