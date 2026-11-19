@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "opencode-decision-models",
+  "version": "0.1.0",
+  "description": "OpenCode plugin that exposes System One decision models (Clef, Jev, Gemini Decision) as Code Mode tools.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/third774/opencode-decision-models.git"
+  },
+  "homepage": "https://github.com/third774/opencode-decision-models#readme",
+  "bugs": {
+    "url": "https://github.com/third774/opencode-decision-models/issues"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@opencode/plugin": "^2.3.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.3",
+    "typescript": "^5.9.3"
+  }
+}
