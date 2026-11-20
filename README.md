@@ -193,6 +193,32 @@ bun run typecheck
 bun test
 ```
 
+## Releases
+
+Versioning uses [Changesets](https://changesets.dev) and publishing uses npm
+[staged publishing](https://docs.npmjs.com/staged-publishing) with
+[trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC), so no
+npm token is required in CI.
+
+1. Add a changeset with `bun run changeset` and merge the PR.
+2. CI opens/updates a **Version Packages** PR. Merging it bumps the version and
+   changelog.
+3. CI stages the new version on npm (`npm stage publish`). Nothing goes live yet.
+4. A maintainer reviews and approves with 2FA, either at
+   <https://www.npmjs.com> → Staged Packages, or locally:
+
+   ```sh
+   npm stage list
+   npm stage approve <stage-id> --otp <code>
+   ```
+
+5. Tag the approved release:
+
+   ```sh
+   bun run tag
+   git push --tags
+   ```
+
 ## License
 
 MIT

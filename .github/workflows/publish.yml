@@ -1,16 +1,20 @@
 name: Publish
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  publish:
+  stage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +24,29 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      # Trusted publishing requires a recent npm CLI for OIDC support.
+      # Staged publishing needs npm >= 11.15 and a recent Node 22.
       - run: npm install -g npm@latest
 
-      - run: npm publish --access public
+      - name: Stage package on npm
+        run: |
+          set -euo pipefail
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "::notice::$NAME@$VERSION is already published; nothing to stage."
+            exit 0
+          fi
+
+          echo "Staging $NAME@$VERSION"
+          npm stage publish --access public
+
+      - name: Next step
+        if: success()
+        run: |
+          echo "### Staged for review" >> "$GITHUB_STEP_SUMMARY"
+          echo "Approve at https://www.npmjs.com (Staged Packages) or run:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "npm stage list" >> "$GITHUB_STEP_SUMMARY"
+          echo "npm stage approve <stage-id> --otp <code>" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
