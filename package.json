@@ -27,7 +27,7 @@
     "changeset": "changeset",
     "version": "changeset version",
     "stage": "npm stage publish --access public",
-    "tag": "changeset tag"
+    "tag": "changeset git-tag"
   },
   "publishConfig": {
     "access": "public"
