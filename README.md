@@ -212,7 +212,8 @@ npm token is required in CI.
    npm stage approve <stage-id> --otp <code>
    ```
 
-5. Tag the approved release:
+5. Tag the approved release. Run the **Finalize Release** workflow from the
+   Actions tab, or locally:
 
    ```sh
    bun run tag
