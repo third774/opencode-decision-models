@@ -5,47 +5,81 @@ on:
     branches: [main]
   workflow_dispatch:
 
-concurrency:
-  group: publish-${{ github.ref }}
-  cancel-in-progress: false
+permissions: {}
 
-permissions:
-  contents: read
-  id-token: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  stage:
+  select-mode:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - id: select-mode
+        uses: changesets/action/select-mode@v2
+
+  version:
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'version'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - uses: changesets/action/version@v2
+        with:
+          script: bun run version
+
+  stage:
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'publish'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      # Staged publishing needs npm >= 11.15 and a recent Node 22.
+      # Staged publishing needs npm >= 11.15 and Node >= 22.14.
       - run: npm install -g npm@latest
 
       - name: Stage package on npm
-        run: |
-          set -euo pipefail
-          NAME=$(node -p "require('./package.json').name")
-          VERSION=$(node -p "require('./package.json').version")
-
-          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
-            echo "::notice::$NAME@$VERSION is already published; nothing to stage."
-            exit 0
-          fi
-
-          echo "Staging $NAME@$VERSION"
-          npm stage publish --access public
+        run: npm stage publish --access public
 
       - name: Next step
-        if: success()
         run: |
           echo "### Staged for review" >> "$GITHUB_STEP_SUMMARY"
-          echo "Approve at https://www.npmjs.com (Staged Packages) or run:" >> "$GITHUB_STEP_SUMMARY"
+          echo "Approve at https://www.npmjs.com (Staged Packages) or locally:" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "npm stage list" >> "$GITHUB_STEP_SUMMARY"
           echo "npm stage approve <stage-id> --otp <code>" >> "$GITHUB_STEP_SUMMARY"
